@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
-const path = require('path');
 const { Client } = require('pg');
+const chance = require('chance').Chance();
+const {v4: uuidv4} = require('uuid');
 
 const app = express();
 
@@ -22,23 +23,94 @@ const client = new Client({
 
 });
 
+// const seedDatabase = async () => {
+//     console.log('Seeding the database...');
+
+//     const tasks = [];
+
+//     for (let i = 0; i < 1000000; i++) {
+//         const task = {
+//             id: uuidv4(), 
+//             title: chance.sentence({words: 6 }), 
+//             completed: false,
+//         };
+//         tasks.push(task);
+//     }
+
+//     const query = `INSERT INTO tasks (id, title, completed) VALUES ${tasks.map((task) => `('${task.id}', '${task.title}', '${task.completed}')`).join(',')}`;
+
+//     try {
+//         await client.query(query);
+//             console.log('Data seeded succesfully');
+//         } catch(error) {
+//             console.error('Error while seeding', error);
+//     }
+    
+// }
+
 client.connect((err) => {
     if (err) {
         console.log(`Failed to connect to the database: ${err}`);
     } else {
         console.log("succesfully connected to the database")
+        // seedDatabase()
     }
 });
 
-app.get('/tasks', (req, res) => {
-    client.query('SELECT * FROM tasks', (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.status(200).json(result.rows)
-        }
-    })
-})
+app.get('/tasks', async (req, res) => {
+    const page = req.query.page
+    // const batchSize = req.query.batchSize
+    const pageSize = req.query.pageSize
+    const offset = (page -1) * pageSize;
+
+    const query = `SELECT * FROM tasks LIMIT $1 OFFSET $2`;
+
+    const result = await client.query(query, [pageSize, offset]);
+
+    const totalCountQuery = 'SELECT COUNT(*) FROM tasks';
+    const totalCountResult = await client.query(totalCountQuery);
+
+    res.send({
+        data: result.rows, 
+        totalCount: parseInt(totalCountResult.rows[0].count),
+        page, 
+        pageSize,
+        // batchSize
+    });
+});
+
+// app.get('/batch-processing/:batchNumber:batchSize', async (req, res) => {
+//     const batchSize = req.params.batchSize;
+//     const batchNumber = req.params.batchNumber;
+//     const batchData = await getBatchData(batchNumber, batchSize);
+//     res.json(batchData);
+// });
+
+// async function getBatchData(batchNumber, batchSize) {
+//     const offset = (batchNumber -1) * batchSize;
+//     const limit = batchSize;
+
+//     const selectQuery = `SELECT * FROM tasks OFFSET ${offset} LIMIT ${limit}`;
+
+//     try {
+//         const result = await client.query(selectQuery);
+//          return result.rows;
+//     } catch (error){
+//         console.error(error);
+//         return [];
+   
+//     }
+// }
+
+// app.get('/tasks', (req, res) => {
+//     client.query('SELECT * FROM tasks', (err, result) => {
+//         if (err) {
+//             res.status(500).send(err);
+//         } else {
+//             res.status(200).json(result.rows)
+//         }
+//     })
+// })
 
 app.post('/addTask', (req, res) => {
     const task = req.body;
@@ -71,11 +143,11 @@ app.put('/updateTask/:id', (req, res) => {
     });
 });
 
-app.put('/completeTask/:id', (req, res) => {
+app.patch('/completeTask/:id', (req, res) => {
     const taskId = req.params.id;
-    const {completed} = req.body
+    const completed = req.body.completed
 
-    const sql = 'UPDATE tasks SET completed=$1 WHERE id=$3';
+    const sql = 'UPDATE tasks SET completed=$1 WHERE id = $2';
     const values = [completed, taskId];
 
     client.query(sql, values, (err, result) => {

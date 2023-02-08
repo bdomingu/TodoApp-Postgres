@@ -13,29 +13,43 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [currentTask, setCurrentTask] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [completed, setCompleted] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   
-useEffect(() => {
-  const displayTasks = () => {
-    axios.get('http://localhost:8000/tasks').then(response => {
-      const data = response.data
-      setTasks(data)
-      console.log(tasks)
-      // console.log(response.data);
-    })
-    .catch(error => {
-      console.log(error);
-    })
-  }
+  // const batchSize = 100;
+  const pageSize = 10;
 
-  displayTasks();
-}, [])
+useEffect(() => {
+  const fetchTasks = async () => {
+    const response = await axios.get
+    (`http://localhost:8000/tasks?page=${currentPage}&pageSize=${pageSize}`);
+      setTasks(response.data.data)
+      setTotalPages(Math.ceil(response.data.totalCount / 10))
+      
+  }
+ 
+  fetchTasks()
+}, [currentPage])
+
+console.log(tasks)
+  // async function getBatchData(batchNumber, batchSize) {
+  //   try {
+  //     const response = await axios.get(`http://localhost:8000/batch-processing/${batchNumber}${batchSize}`);
+  //      console.log(response.data);
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  // }
+
+  // getBatchData(1, 10)
+  // getBatchData(2, 10)
 
   const submitTask = (title) => {  
     const task = {
       id: uuidv4(),
       title: title,
-      completed: completed
+      completed: true
 
     }
   
@@ -77,36 +91,20 @@ useEffect(() => {
   }
   
  
-  //The completed is updating after a second click of the "completed" button//
-  //Need to figure out a better solution so it updates immediately.//
-  //Ned to still figure out why it is not updating the "completed" section in the database//
+  
   const markComplete = (id) => {
-    setCompleted(true)
     
-    const completedTasks = tasks.map(task => {
-      return {...task, completed:completed};
-    })
-    
-    setTasks(completedTasks)
-    
-    axios.put(`http://localhost:8000/completeTask/${id}`, {completed:completed}).then(response => {
+   axios.patch(`http://localhost:8000/completeTask/${id}`, {completed:true}).then(response => {
       console.log(response.data);
+
     })
       .catch(error => {
         console.log(error);
       })
-
-    //*code that was actually updating right away*//
-         // const updatedCompleted = tasks.map(task => {
-    //   if (task.id === id ){
-
-    //   return {...task, completed:true}
-    //   }
-    // });
-    // setTasks(updatedCompleted);
+   
   }
 
-  console.log(tasks)
+ 
   const deleteTask = (id) => {
     const newTasks = tasks.filter(task => task.id !== id );
     setTasks(newTasks)
@@ -123,7 +121,7 @@ useEffect(() => {
     <div className="App">
       <h1>Todo App</h1>
       <AddTask currentTask={currentTask} setCurrentTask={setCurrentTask} submitTask={submitTask}/>
-      <Tasks tasks={tasks} deleteTask={deleteTask} markComplete={markComplete} handleEdit={handleEdit}/>
+      <Tasks totalPages={totalPages} setCurrentPage={setCurrentPage} currentPage={currentPage} tasks={tasks} deleteTask={deleteTask} markComplete={markComplete} handleEdit={handleEdit}/>
      
       
     </div>

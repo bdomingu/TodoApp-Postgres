@@ -1,8 +1,7 @@
-function Tasks({tasks, deleteTask, handleEdit, markComplete}) {
+function Tasks({tasks, deleteTask, handleEdit, markComplete, setCurrentPage, currentPage, totalPages}) {
 
   return (
     <div>
-        <ul>
           {tasks.map((task) => (
             <><li key={task.id}>{task.title}</li>
             <button onClick={() => handleEdit(task.id)}>Edit</button>
@@ -10,7 +9,17 @@ function Tasks({tasks, deleteTask, handleEdit, markComplete}) {
             <button onClick={() => markComplete(task.id)}>Completed</button>
             </>
           ))}
-        </ul>
+          <div>
+            {currentPage > 1 && (
+              <button onClick={() => setCurrentPage(currentPage -1)}>
+                Previous</button>
+            )}
+            {currentPage < totalPages && (
+              <button onClick={() => setCurrentPage(currentPage + 1)}>
+                Next</button>
+            )}
+          </div>
+     
     </div>
   )
   
